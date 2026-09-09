@@ -6,6 +6,7 @@ pipeline {
     }
 
     environment {
+        PATH = "/opt/homebrew/bin:${env.PATH}"
         PORT = "${env.BRANCH_NAME == 'main' ? '3000' : '3001'}"
         IMAGE_NAME = "${env.BRANCH_NAME == 'main' ? 'nodemain' : 'nodedev'}"
         CONTAINER_NAME = "${env.BRANCH_NAME == 'main' ? 'nodemain-container' : 'nodedev-container'}"
