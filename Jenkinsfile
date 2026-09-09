@@ -5,12 +5,12 @@ pipeline {
         nodejs 'node'
     }
 
-  environment {
-      PATH = "/opt/homebrew/bin:/Applications/Docker.app/Contents/Resources/bin:${env.PATH}"
-      PORT = "${env.BRANCH_NAME == 'main' ? '3000' : '3001'}"
-      IMAGE_NAME = "${env.BRANCH_NAME == 'main' ? 'nodemain' : 'nodedev'}"
-      CONTAINER_NAME = "${env.BRANCH_NAME == 'main' ? 'nodemain-container' : 'nodedev-container'}"
-  }
+environment {
+    PATH = "/opt/homebrew/bin:/usr/local/bin:${env.PATH}"
+    PORT = "${env.BRANCH_NAME == 'main' ? '3000' : '3001'}"
+    IMAGE_NAME = "${env.BRANCH_NAME == 'main' ? 'nodemain' : 'nodedev'}"
+    CONTAINER_NAME = "${env.BRANCH_NAME == 'main' ? 'nodemain-container' : 'nodedev-container'}"
+}
 
     stages {
         stage('Checkout') {
