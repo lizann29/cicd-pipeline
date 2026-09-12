@@ -17,9 +17,21 @@ pipeline {
             steps { checkoutRepo() }
         }
         stage('Build') {
+            agent {
+                docker {
+                    image 'node:16'
+                    reuseNode true
+                }
+            }
             steps { buildApp() }
         }
         stage('Test') {
+            agent {
+                docker {
+                    image 'node:16'
+                    reuseNode true
+                }
+            }
             steps { testApp() }
         }
         stage('Build Docker Image') {
