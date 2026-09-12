@@ -16,6 +16,9 @@ pipeline {
         stage('Checkout') {
             steps { checkoutRepo() }
         }
+        stage('Lint Dockerfile') {
+            steps { lintDockerfile() }
+        }
         stage('Build') {
             agent {
                 docker {
