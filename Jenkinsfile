@@ -40,6 +40,9 @@ pipeline {
         stage('Build Docker Image') {
             steps { buildDockerImage(env.IMAGE_NAME, env.PORT) }
         }
+        stage('Scan Image with Trivy') {
+            steps { scanImage(env.IMAGE_NAME) }
+        }
         stage('Push to Docker Hub') {
             steps { pushToDockerHub(env.IMAGE_NAME, env.DOCKERHUB_REPO, env.BRANCH_NAME, 'dockerhub-creds') }
         }
