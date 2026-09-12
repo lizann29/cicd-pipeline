@@ -1,5 +1,3 @@
-@Library('JenkinsTesLib') _
-
 pipeline {
     agent any
     tools {
@@ -14,10 +12,14 @@ pipeline {
     }
     stages {
         stage('Checkout') {
-            steps { checkoutRepo() }
+            steps {
+                checkout scm
+            }
         }
         stage('Lint Dockerfile') {
-            steps { lintDockerfile() }
+            steps {
+                sh 'docker run --rm -i hadolint/hadolint < Dockerfile'
+            }
         }
         stage('Build') {
             agent {
@@ -26,7 +28,10 @@ pipeline {
                     reuseNode true
                 }
             }
-            steps { buildApp() }
+            steps {
+                sh 'chmod +x scripts/build.sh'
+                sh 'export HOME=/tmp && npm_config_cache=/tmp/.npm-cache ./scripts/build.sh'
+            }
         }
         stage('Test') {
             agent {
@@ -35,22 +40,46 @@ pipeline {
                     reuseNode true
                 }
             }
-            steps { testApp() }
+            steps {
+                sh 'chmod +x scripts/test.sh'
+                sh 'export HOME=/tmp && npm_config_cache=/tmp/.npm-cache ./scripts/test.sh'
+            }
         }
         stage('Build Docker Image') {
-            steps { buildDockerImage(env.IMAGE_NAME, env.PORT) }
+            steps {
+                sh "docker build --build-arg PORT=${PORT} -t ${IMAGE_NAME}:v1.0 ."
+            }
         }
         stage('Scan Image with Trivy') {
-            steps { scanImage(env.IMAGE_NAME) }
+            steps {
+                sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --exit-code 0 --severity HIGH,CRITICAL ${IMAGE_NAME}:v1.0"
+            }
         }
         stage('Push to Docker Hub') {
-            steps { pushToDockerHub(env.IMAGE_NAME, env.DOCKERHUB_REPO, env.BRANCH_NAME, 'dockerhub-creds') }
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh "echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin"
+                    sh "docker tag ${IMAGE_NAME}:v1.0 ${DOCKERHUB_REPO}:${env.BRANCH_NAME}"
+                    sh "docker push ${DOCKERHUB_REPO}:${env.BRANCH_NAME}"
+                }
+            }
         }
         stage('Deploy') {
-            steps { deployApp(env.CONTAINER_NAME, env.IMAGE_NAME, env.PORT) }
+            steps {
+                sh "docker rm -f ${CONTAINER_NAME} || true"
+                sh "docker run -d --name ${CONTAINER_NAME} -p ${PORT}:${PORT} ${IMAGE_NAME}:v1.0"
+            }
         }
         stage('Trigger Deploy Pipeline') {
-            steps { triggerDeployPipeline(env.BRANCH_NAME) }
+            steps {
+                script {
+                    if (env.BRANCH_NAME == 'main') {
+                        build job: 'Deploy_to_main', wait: false
+                    } else if (env.BRANCH_NAME == 'dev') {
+                        build job: 'Deploy_to_dev', wait: false
+                    }
+                }
+            }
         }
     }
 }
